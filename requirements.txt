@@ -1,0 +1,6 @@
+netCDF4
+xarray
+cartopy
+geopandas
+streamlit
+pandas
