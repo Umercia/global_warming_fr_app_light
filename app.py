@@ -154,7 +154,6 @@ col1, col2 = st.columns([1.33, 1])
 with col1:
 
         #%% value time serie vizualisation
-        # plt.figure(figsize=(14, 6))
 
         fig = plt.figure(figsize=(14, 6))
         ax = plt.gca()  # Get the current axes
@@ -162,14 +161,12 @@ with col1:
         # Set the background color of the figure and axes to be transparent
         fig.patch.set_facecolor('none')
         ax.set_facecolor('none')
-        # ax.axis('off')
+
+        # remove the frame
         for spine in ax.spines.values():
                 spine.set_visible(False)
 
-        # Set labels and title
-        plt.xlabel('Year')
-
-        # plt.suptitle(f'{city} ({lat_sel}°, {lng_sel}°)', size=24)
+        # Plot the 'var' column as a line plot
         plt.plot(yearly_df.index, 
                 yearly_df[var], 
                 color='red', 
@@ -177,13 +174,10 @@ with col1:
                 linewidth=3,
                 alpha=0.7)
 
-        plt.grid(color='dimgrey', linestyle=':')
-
         if var_inf.loc[var, 'min'] != None:
                 plt.ylim(var_inf.loc[var, 'min'], 
                          var_inf.loc[var, 'max'])
         
-
         # Plot the rolling mean as a line plot
         plt.plot(yearly_rol5_df.index, 
                 yearly_rol5_df[var], 
@@ -192,7 +186,6 @@ with col1:
                 marker='o', 
                 label='5-Year Rolling Mean', 
                 alpha=0.6)
-
 
         # Plot the rolling mean as a line plot
         plt.plot(yearly_rol10_df.index, 
@@ -204,9 +197,11 @@ with col1:
                 alpha=0.3)
 
         # Set labels and title
-        plt.xlabel('Year')
-        plt.ylabel(f'{var} [{var_inf.loc[var, "unit"]}]')
-        plt.title(f'Annual "{var}" at {city}', fontsize=14)
+        plt.title(f'Annual "{var}" at {city}', fontsize=16)
+        plt.grid(color='dimgrey', linestyle=':')
+        plt.yticks(fontsize=12)
+        plt.xticks(fontsize=12)
+        plt.ylabel(f'{var} [{var_inf.loc[var, "unit"]}]', fontsize=14)
 
         # Set the legend background color to be transparent
         legend = plt.legend(loc='upper left')
@@ -254,7 +249,6 @@ with col1:
                 label='5-Year Rolling Mean', 
                 alpha=0.6)
 
-
         # Plot the rolling mean as a line plot
         plt.plot(yearly_anom_rol10_df.index, 
                 yearly_anom_rol10_df[var], 
@@ -273,14 +267,14 @@ with col1:
                         va='bottom' if value >= 0 else 'top',
                         fontsize=8)
 
-
         # Set labels and title
-        plt.xlabel('Year')
-        plt.ylabel(f'Anomaly: {var} [{var_inf.loc[var, "unit"]}]')
-        plt.title(f'Annual "{var}" anomalies at {city}', fontsize=14)
+        plt.title(f'Annual "{var}" anomalies at {city}', fontsize=16)
         plt.grid(color='dimgrey', linestyle=':')
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.ylabel(f'Anomaly: {var} [{var_inf.loc[var, "unit"]}]', fontsize=14)
 
-        # Add legend
+        # Add legend and handle legend ordering
         #get handles and labels
         handles, labels = plt.gca().get_legend_handles_labels()
         #specify order of items in legend
@@ -355,7 +349,7 @@ with col2:
                         color='blue'  # Set the marker color to red
                         )
 
-        plt.title(f'"{var}" yearly average from {from_year} to {to_year}', fontsize=12)
+        plt.title(f'"{var}" yearly average from {from_year} to {to_year}', fontsize=13)
         st.pyplot(plt)
 
 #       %% anomalie map
@@ -435,7 +429,7 @@ with col2:
                         color='blue'  # Set the marker color to red
                         )
 
-        plt.title(f'"{var}" anomaly from {from_year} to {to_year}', fontsize=12)
+        plt.title(f'"{var}" anomaly from {from_year} to {to_year}', fontsize=13)
         
         st.pyplot(plt)  
 
