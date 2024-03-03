@@ -109,6 +109,10 @@ major_cities = cities[cities['capital'].isin(['primary', 'admin'])]
 # Get the list of cities from the 'cities' dataframe
 city_list = cities['name'].tolist()
 
+city = 'Paris'
+var = '2m temperature'
+
+
 
 #%% Streamlit
 
@@ -147,6 +151,19 @@ yearly_df_ref = yearly_df.loc[P['ref_period'][0]:P['ref_period'][1]].mean().T
 yearly_anomalie_df = yearly_df - yearly_df_ref
 yearly_anom_rol5_df = yearly_anomalie_df.rolling(window=5).mean()
 yearly_anom_rol10_df = yearly_anomalie_df.rolling(window=10).mean()
+
+
+# prevision 2050...
+n_years = [5, 10, 20, 30]
+table_data = []
+for n in n_years:
+        warming_rate = (yearly_anom_rol10_df.loc[max_year, var] - yearly_anom_rol10_df.loc[max_year-n, var])/n
+        estimated_anomalie = warming_rate * (2050 - max_year) + yearly_anom_rol10_df.loc[max_year, var]
+        table_data.append([n, warming_rate, estimated_anomalie])
+
+prevision_2050_df = pd.DataFrame(table_data, columns=['Years', 'Warming Rate', 'Estimated Anomalie'])
+prevision_2050_df[f'reference_temperature'] = yearly_df_ref['2m temperature']
+prevision_2050_df[f'prevision_temperature'] = prevision_2050_df[f'reference_temperature'] + prevision_2050_df['Estimated Anomalie']
 
 
 col1, col2 = st.columns([1.33, 1])
@@ -319,7 +336,7 @@ with col2:
                 '+',
                 data=major_cities,
                 marker='+', 
-                color='dimgrey', 
+                color='green', 
                 markersize=8, 
                 label='name',
                 transform=ccrs.PlateCarree(),
@@ -327,27 +344,28 @@ with col2:
 
         for i, row in major_cities.iterrows():
                 plt.text(row['lng']+0.1, row['lat']+0.1, s=row['name'], 
-                        transform=ccrs.PlateCarree(), color='dimgrey',
-                        size=8)
+                        transform=ccrs.PlateCarree(), color='green',
+                        size=9)
 
         selected_city = cities.query('name == @city')[['name', 'lat', 'lng']]  
         ax.plot('lng', 
                 'lat', 
-                '+',
-                data=selected_city,
                 marker='X', 
-                color='blue', 
-                markersize=9, 
-                label='name',
+                data=selected_city,
+                color='darkgrey', 
+                markersize=13, 
+                markeredgewidth=1.5,
+                markeredgecolor='black',
+                label='_nolegend_',  # This will exclude this plot from the legend
                 transform=ccrs.PlateCarree(),
                 )
 
-        plt.text(selected_city['lng'], selected_city['lat'], s=selected_city['name'].values[0], 
-                        transform=ccrs.PlateCarree(),
-                        size=9,
-                        weight='bold',
-                        color='blue'  # Set the marker color to red
-                        )
+        # plt.text(selected_city['lng'], selected_city['lat'], s=selected_city['name'].values[0], 
+        #                 transform=ccrs.PlateCarree(),
+        #                 size=9,
+        #                 weight='bold',
+        #                 color='blue'  # Set the marker color to red
+        #                 )
 
         plt.title(f'"{var}" yearly average from {from_year} to {to_year}', fontsize=13)
         st.pyplot(plt)
@@ -401,36 +419,38 @@ with col2:
                 '+',
                 data=major_cities,
                 marker='+', 
-                color='dimgrey', 
+                color='green', 
                 markersize=8, 
-                label='name',
+                label='_nolegend_',
                 transform=ccrs.PlateCarree(),
                 )
 
         for i, row in major_cities.iterrows():
                 plt.text(row['lng']+0.1, row['lat']+0.1, s=row['name'], 
-                        transform=ccrs.PlateCarree(), color='dimgrey',
-                        size=8)
+                        transform=ccrs.PlateCarree(), color='green',
+                        size=9)
+                
         ax.plot('lng', 
                 'lat', 
-                '+',
-                data=selected_city,
                 marker='X', 
-                color='blue', 
-                markersize=9, 
-                label='name',
+                data=selected_city,
+                color='darkgrey', 
+                markersize=13, 
+                markeredgewidth=1.5,
+                markeredgecolor='black',
+                label='_nolegend_',  # This will exclude this plot from the legend
                 transform=ccrs.PlateCarree(),
                 )
 
-        plt.text(selected_city['lng'], selected_city['lat'], s=selected_city['name'].values[0], 
-                        transform=ccrs.PlateCarree(),
-                        size=9,
-                        weight='bold',
-                        color='blue'  # Set the marker color to red
-                        )
+        # plt.text(selected_city['lng'], selected_city['lat'], s=selected_city['name'].values[0], 
+        #                 transform=ccrs.PlateCarree(),
+        #                 size=9,
+        #                 weight='bold',
+        #                 color='blue'  # Set the marker color to red
+        #                 )
 
         plt.title(f'"{var}" anomaly from {from_year} to {to_year}', fontsize=13)
-        
+        ax.legend(fontsize='large')
         st.pyplot(plt)  
 
 st.markdown("""**Data source:** [ERA5-Land monthly average](https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land-monthly-means?tab=overview), a global land-surface dataset at 9 km resolution, available from 1950 to present. 
