@@ -4,3 +4,4 @@ cartopy
 geopandas
 streamlit
 pandas
+plotly
