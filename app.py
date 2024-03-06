@@ -102,22 +102,19 @@ var_names = list(yearly_nc.data_vars.keys())
 major_cities = cities[cities['capital'].isin(['primary', 'admin'])]
 city_list = cities['name'].tolist()
 
+# set default values and period
+var = '2m temperature'
+min_year = yearly_nc.time.min().item()
+max_year = yearly_nc.time.max().item()
+years = range(min_year, max_year+1)
 
 #%% Streamlit
 st.sidebar.title("Effet du réchauffement climatique en France")
 st.sidebar.markdown('Variations temporelles et spatiales des anomalies de température en France.')
 
 # side bar - mainly selection
-city = st.sidebar.selectbox('Sélectionnez une ville:', city_list)
+city = st.sidebar.selectbox('Sélectionnez une ville:', city_list, index=city_list.index('Paris'))
 selected_city = cities.query('name == @city')[['name', 'lat', 'lng']] 
-
-# var = st.sidebar.selectbox('Select a feature:', var_names)
-var = '2m temperature'
-
-min_year = yearly_nc.time.min().item()
-max_year = yearly_nc.time.max().item()
-years = range(min_year, max_year+1)
-
 
 # selection data extraction 
 lat_sel, lng_sel = (cities.query('name == @city')
@@ -136,7 +133,6 @@ yearly_rol10_df = yearly_df.rolling(window=10).mean()
 yearly_df_ref = yearly_df.loc[P['ref_period'][0]:P['ref_period'][1]].mean().T
 yearly_anomalie_df = yearly_df - yearly_df_ref
 yearly_anom_rol10_df = yearly_anomalie_df.rolling(window=10).mean()
-
 
 # prevision 2050...
 n_years = [5, 10, 20, 30]
@@ -291,17 +287,6 @@ with col2:
                         # label='_nolegend_',  # This will exclude this plot from the legend
                         )
 
-        # add selected city
-        # ax.plot('lng', 
-        #         'lat', 
-        #         '+',
-        #         data=selected_city,
-        #         marker='X', 
-        #         color='darkgrey', 
-        #         markersize=11, 
-        #         label='name',
-        #         transform=ccrs.PlateCarree(),
-        #         )
         ax.plot('lng', 
                 'lat', 
                 marker='X', 
@@ -315,15 +300,7 @@ with col2:
                 )
 
         ax.legend(fontsize='large', frameon=False)
-
-        # add selected city name
-        # plt.text(selected_city['lng'], selected_city['lat'], s=selected_city['name'].values[0], 
-        #          transform=ccrs.PlateCarree(),
-        #          size=9,
-        #          weight='bold',
-        #          color='royalblue',
-        #         )
-             
+         
         st.pyplot(plt)  
 
 st.markdown(f'''
