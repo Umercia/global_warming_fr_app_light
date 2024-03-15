@@ -306,7 +306,7 @@ with col2:
 st.markdown(f'''
 **{city} 2050 - Prévision:**  
 Avec un de taux de "rechauffement" annuel se situant entre {prevision_2050_df.loc[30, 'Warming Rate']:+.3f} et {prevision_2050_df.loc[5, 'Warming Rate']:+.3f} °C/an,
- l'anomalie de temperature annuelle en 2050 devrait se situer entre **{prevision_2050_df.loc[30, 'prev_anomalie']:+.1f} et {prevision_2050_df.loc[5, 'prev_anomalie']:+.1f} °C**. Appliqué a la temperature de refence de {yearly_df_ref[var]:.1f} °C, cela donne pour 2050 une temperature comprise entre **{prevision_2050_df.loc[30, 'prev_temperature']:.1f} et {prevision_2050_df.loc[5, 'prev_temperature']:.1f} °C**.
+ l'anomalie de temperature en 2050 devrait se situer entre **{prevision_2050_df.loc[30, 'prev_anomalie']:+.1f} et {prevision_2050_df.loc[5, 'prev_anomalie']:+.1f} °C**. Appliqué a la temperature de refence de {yearly_df_ref[var]:.1f} °C, cela donne pour 2050 une temperature annuelle comprise entre **{prevision_2050_df.loc[30, 'prev_temperature']:.1f} et {prevision_2050_df.loc[5, 'prev_temperature']:.1f} °C**.
 ''')    
    
 st.markdown("""
