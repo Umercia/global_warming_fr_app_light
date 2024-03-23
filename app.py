@@ -2,13 +2,14 @@ import pandas as pd
 import xarray as xr            # to read netcdf
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
-# import geopandas as gpd
 from shapely.geometry import Point
 import numpy as np
 import streamlit as st
-import netCDF4
 import plotly.express as px
 import plotly.graph_objects as go
+
+import plotly.io as pio
+pio.renderers.default = "browser"
 
 #%% lib
 @st.cache_data
@@ -36,7 +37,7 @@ def load_var_inf(file_path):
 def calculate_yearly_anomalie_nc(_yearly_nc, ref_period):
     yearly_ref_nc = (_yearly_nc.sel(time=slice(f"{ref_period[0]}-01-01", 
                                                f"{ref_period[1]}-12-31"))
-                             .mean(dim='time'))
+                               .mean(dim='time'))
     
     yearly_anom_nc = _yearly_nc - yearly_ref_nc
 
@@ -44,7 +45,7 @@ def calculate_yearly_anomalie_nc(_yearly_nc, ref_period):
 
 @st.cache_data
 def load_and_process_yearly_nc(file_path, selection, var_information):
-        nc = xr.open_dataset(file_path, engine='netcdf4')  # 
+        nc = xr.open_dataset(file_path, engine='netcdf4')
         nc = nc[selection]
 
         rename_var_dict = (var_information.reset_index()
@@ -113,7 +114,8 @@ st.sidebar.title("Effet du réchauffement climatique en France")
 st.sidebar.markdown('Variations temporelles et spatiales des anomalies de température en France.')
 
 # side bar - mainly selection
-city = st.sidebar.selectbox('Sélectionnez une ville:', city_list, index=city_list.index('Paris'))
+city = st.sidebar.selectbox('Sélectionnez une ville:', city_list, index=city_list.index('Arpajon'))
+# city = 'Arpajon'
 selected_city = cities.query('name == @city')[['name', 'lat', 'lng']] 
 
 # selection data extraction 
@@ -128,13 +130,14 @@ yearly_df = (yearly_nc.sel(latitude=lat_sel,
                        .to_dataframe()
                        .drop(columns=['latitude', 'longitude']))
 
-# precessing reference and rolling means
+# compute reference and rolling means for selected city
 yearly_rol10_df = yearly_df.rolling(window=10).mean()
 yearly_df_ref = yearly_df.loc[P['ref_period'][0]:P['ref_period'][1]].mean().T
 yearly_anomalie_df = yearly_df - yearly_df_ref
 yearly_anom_rol10_df = yearly_anomalie_df.rolling(window=10).mean()
 
-# prevision 2050...
+# compute prevision for 2050
+## 
 n_years = [5, 10, 20, 30]
 table_data = []
 for n in n_years:
@@ -147,6 +150,24 @@ prevision_2050_df[f'ref_temperature'] = yearly_df_ref['2m temperature']
 prevision_2050_df[f'prev_temperature'] = prevision_2050_df[f'ref_temperature'] + prevision_2050_df['prev_anomalie']
 prevision_2050_df.set_index('Years', inplace=True)
 
+## data for the projection plot's traces 
+current_anomalie = yearly_anom_rol10_df['2m temperature'].iloc[-1]
+current_year = yearly_df.index.max()
+
+period_length_short = n_years[1] 
+period_length_long = n_years[3] 
+projections : dict[dict] = {}
+for period_length in [period_length_short, period_length_long]:
+        warming_rate = prevision_2050_df.loc[period_length, 'Warming Rate']
+        years_temp = list(range(current_year - period_length, 2051))
+        anomalies = [current_anomalie + warming_rate * (year - current_year) for year in years_temp]
+        temperatures = anomalies + yearly_df_ref['2m temperature']
+        projections[period_length]= {'year': years_temp, 
+                                     'warming_rate':warming_rate,
+                                     'anomalie': anomalies,
+                                     'temperature': temperatures,
+                                     }
+ 
 col1, col2 = st.columns([1.4, 1])
 
 with col1:
@@ -168,6 +189,99 @@ with col1:
                              hovertemplate='Année: %{x} <br>Anomalie: %{y:.1f} °C <br>Moyenne: %{customdata[0]:.1f} °C <br>Référence: %{customdata[1]:.1f} °C',  # Display the year, anomaly value, and yearly value in the hover tooltip
                              ),
                          )
+        
+# PROJECTION --------------------
+
+        ## SHORT PERIOD PROJECTION
+        fig.add_trace(go.Scatter(x=projections[period_length_short]['year'], 
+                                 y=projections[period_length_short]['anomalie'], 
+                                 mode='lines',
+                                 line=dict(color='grey', 
+                                           width=2, 
+                                           dash='dot',), 
+                                 name='Projection',
+                                 showlegend=True,
+                                 hovertemplate='Année: %{x} <br>Anomalie: %{y:.1f} °C'),
+                        )
+        
+        # last point
+        last_point = [projections[period_length_short]['year'][-1], 
+                      projections[period_length_short]['anomalie'][-1]]
+        fig.add_trace(go.Scatter(x=[last_point[0]],  
+                                 y=[last_point[1]],
+                                 mode='markers', 
+                                 marker=dict(symbol='circle',
+                                             color='grey', 
+                                             size=8,
+                                             line_color="black",
+                                             line_width=1),
+                                 showlegend=False,
+                                 hovertemplate='Année: %{x} <br>Anomalie: %{y:.1f} °C'),
+                        )   
+             
+        fig.add_annotation(x=last_point[0],  
+                           y=last_point[1],
+                           text='+' + str(round(last_point[1],1)) + '°C',
+                           showarrow=False,
+                           font=dict(size=15,
+                                     color="grey",
+                                     family="Calibri",),
+                           xanchor='left',
+                           yanchor='bottom',
+                        )
+        
+        
+        ## LONG PERIOD PROJECTION
+        fig.add_trace(go.Scatter(x=projections[period_length_long]['year'], 
+                                 y=projections[period_length_long]['anomalie'], 
+                                 mode='lines',
+                                 line=dict(color='grey', 
+                                           width=2, 
+                                           dash='dot',), 
+                                 name='Projection',
+                                 showlegend=False,
+                                 hovertemplate='Année: %{x} <br>Anomalie: %{y:.1f} °C'),
+                        )
+        
+        # last point
+        last_point = [projections[period_length_long]['year'][-1], 
+                      projections[period_length_long]['anomalie'][-1]]
+        fig.add_trace(go.Scatter(x=[last_point[0]],  
+                                 y=[last_point[1]],
+                                 mode='markers', 
+                                 marker=dict(symbol='circle',
+                                             color='grey', 
+                                             size=8,
+                                             line_color="black",
+                                             line_width=1),
+                                 showlegend=False,
+                                 hovertemplate='Année: %{x} <br>Anomalie: %{y:.1f} °C'),
+                        )   
+             
+        fig.add_annotation(x=last_point[0],  
+                           y=last_point[1],
+                           text='+' + str(round(last_point[1],1)) + '°C',
+                           showarrow=False,
+                           font=dict(size=15,
+                                     color="grey",
+                                     family="Calibri",),
+                           xanchor='left',
+                           yanchor='bottom',
+                        )
+
+        fig.add_trace(go.Scatter(x=[projections[period_length_long]['year'][-1]],  
+                                 y=[projections[period_length_long]['anomalie'][-1]],
+                                 mode='markers', 
+                                 marker=dict(symbol='circle',
+                                             color='grey', 
+                                             size=8,
+                                             line_color="black",
+                                             line_width=1),
+                                 showlegend=False,
+                                 hovertemplate='Année: %{x} <br>Anomalie: %{y:.1f} °C'),
+                        ) 
+        
+# -----------------------------
         
         # Add a 10-year rolling average line
         fig.add_trace(go.Scatter(x=yearly_anom_rol10_df.index, 
@@ -193,8 +307,8 @@ with col1:
                                             line_color="black",
                                             line_width=1),
                                 showlegend=False,
-                                hovertemplate='Anomalie: %{y:.1f} °C'),
-                                )
+                                hovertemplate='Année: %{x} <br>Anomalie: %{y:.1f} °C'),
+                        )
 
         # Add an annotation for the last point
         fig.add_annotation(x=last_point.name, 
@@ -205,16 +319,18 @@ with col1:
                                      color="red",
                                      family="Calibri",),
                            xanchor='left',
-                           yanchor='bottom',
+                           yanchor='top',
                            )
 
         fig.update_layout(margin=dict(t=0),
-                        xaxis_title='',
-                        legend=dict(x=0, y=1,),  # moves the legend to the top left corner
+                          xaxis_title='',
+                          legend=dict(x=0, y=1,),  # moves the legend to the top left corner
                         )
 
-        fig.update_yaxes(range=[-1.5, 3.5],
+        fig.update_yaxes(range=[-1.5, 6],
                          tickformat='+')
+        
+        fig.update_xaxes(dtick=10)
 
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False}) 
 
@@ -240,24 +356,13 @@ with col2:
         v_min = map_sel.min() + 0.15
         v_max = map_sel.max() - 0.15
         c_map = 'gist_heat' # 'RdGy_r' #'PuOr_r' #'hot' #RdPu'
-        # v_abs_max = max(abs(map_sel.min()), abs(map_sel.max()))
-        # v_min = -v_abs_max
-        # v_max = v_abs_max
-
-        # if v_min*v_max < 0 : 
-        #         c_map = 'bwr'
-        #         v_abs_max = max(abs(map_sel.min()), abs(map_sel.max()))
-        #         v_min = -v_abs_max
-        #         v_max = v_abs_max
-        # else: 
-        #         c_map = 'inferno'
 
         # map
         map_sel.plot(ax=ax, 
                         transform=ccrs.PlateCarree(), 
                         x='longitude', 
                         y='latitude',
-                        cmap=c_map,  # viridis, coolwarm, seismic, hot, bwr, plasma
+                        cmap=c_map,
                         cbar_kwargs={'shrink': 0.5, 
                                      'label' : 'Anomalie de température [°C]'},
                         vmin= v_min,
@@ -305,8 +410,8 @@ with col2:
 
 st.markdown(f'''
 **{city} 2050 - Prévision:**  
-Avec un de taux de "rechauffement" annuel se situant entre {prevision_2050_df.loc[30, 'Warming Rate']:+.3f} et {prevision_2050_df.loc[5, 'Warming Rate']:+.3f} °C/an,
- l'anomalie de temperature en 2050 devrait se situer entre **{prevision_2050_df.loc[30, 'prev_anomalie']:+.1f} et {prevision_2050_df.loc[5, 'prev_anomalie']:+.1f} °C**. Appliqué a la temperature de refence de {yearly_df_ref[var]:.1f} °C, cela donne pour 2050 une temperature annuelle comprise entre **{prevision_2050_df.loc[30, 'prev_temperature']:.1f} et {prevision_2050_df.loc[5, 'prev_temperature']:.1f} °C**.
+Avec un de taux de "rechauffement" annuel se situant entre {projections[period_length_long]['warming_rate']:+.3f} et {projections[period_length_short]['warming_rate']:+.3f} °C/an,
+ l'anomalie de temperature en 2050 devrait se situer entre **{projections[period_length_long]['anomalie'][-1]:+.1f} et {projections[period_length_short]['anomalie'][-1]:+.1f} °C**. Appliqué a la temperature de refence de {yearly_df_ref[var]:.1f} °C, cela donne pour 2050 une temperature annuelle comprise entre **{projections[period_length_long]['temperature'][-1]:.1f} et {projections[period_length_short]['temperature'][-1]:.1f} °C**.
 ''')    
    
 st.markdown("""
