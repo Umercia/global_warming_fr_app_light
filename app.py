@@ -328,7 +328,8 @@ with col1:
                         )
 
         fig.update_yaxes(range=[-1.5, 6],
-                         tickformat='+')
+                         tickformat='+',
+                         title_text='Anomalie de temperature [°C]')
         
         fig.update_xaxes(dtick=10)
 
@@ -425,3 +426,5 @@ Les données sont fournies par le Centre européen de prévisions météorologiq
 - Les données extraitent pour les villes sont issues du point de données le plus proche (distance < 4.5 km).
 Cette approche est généralement fiable sur les données de température. Néamoins, cette fiablilité baisse fortement dans les zones trés montagneuses.    
 """)
+
+st.markdown('Contact: [gen1.tweezers809@passinbox.com](mailto:gen1.tweezers809@passinbox.com)')
