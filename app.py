@@ -409,18 +409,19 @@ with col2:
         st.pyplot(plt)  
 
 st.markdown(f'''
-**{city} 2050 - Prévision:**  
-Avec un de taux de "rechauffement" annuel se situant entre {projections[period_length_long]['warming_rate']:+.3f} et {projections[period_length_short]['warming_rate']:+.3f} °C/an,
+**Projection 2050 pour {city}:**  
+Avec un de "taux de rechauffement" annuel se situant entre {projections[period_length_long]['warming_rate']:+.3f} et {projections[period_length_short]['warming_rate']:+.3f} °C/an,
  l'anomalie de temperature en 2050 devrait se situer entre **{projections[period_length_long]['anomalie'][-1]:+.1f} et {projections[period_length_short]['anomalie'][-1]:+.1f} °C**. Appliqué a la temperature de refence de {yearly_df_ref[var]:.1f} °C, cela donne pour 2050 une temperature annuelle comprise entre **{projections[period_length_long]['temperature'][-1]:.1f} et {projections[period_length_short]['temperature'][-1]:.1f} °C**.
 ''')    
    
-st.markdown("""
+st.markdown(f"""
 **Source des données :**  
 [ERA5-Land monthly average](https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land-monthly-means?tab=overview), est un ensemble de données météorolgique de la surface terrestre avec une résolution de 9 km, disponible de 1950 à aujourd'hui.
 Les données sont fournies par le Centre européen de prévisions météorologiques à moyen terme ([ECMWF](https://www.ecmwf.int/)) par l'intermédiaire de [Copernicus](https://www.copernicus.eu/en/about-copernicus).
   
 **Remarques :**  
-- La période de réference utilisé pour le calcul d'anomalie va de 1950 à 1979.  
+- La période de réference utilisé pour le calcul d'anomalie va de 1950 à 1979 (30 ans).  
+- Le calcul des moyennes haute et basse du "taux de rechauffement" se fait respectivement sur la base des {period_length_short} et {period_length_long} dernieres années.
 - Les données extraitent pour les villes sont issues du point de données le plus proche (distance < 4.5 km).
 Cette approche est généralement fiable sur les données de température. Néamoins, cette fiablilité baisse fortement dans les zones trés montagneuses.    
 """)
