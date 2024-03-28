@@ -58,7 +58,7 @@ def load_and_process_yearly_nc(file_path, selection, var_information):
         return nc
 
 #%% Set parameters
-st.set_page_config(layout="wide")
+# st.set_page_config(layout="wide")
 
 plt.rcParams['text.color'] = 'white'
 plt.rcParams['axes.labelcolor'] = 'white'
@@ -110,71 +110,74 @@ max_year = yearly_nc.time.max().item()
 years = range(min_year, max_year+1)
 
 #%% Streamlit
-st.sidebar.title("Effet du réchauffement climatique en France")
-st.sidebar.markdown('Variations temporelles et spatiales des anomalies de température en France.')
+st.title("Effet du réchauffement climatique en France", )
+st.markdown('Variations temporelles et spatiales des anomalies de température en France.')
 
-# side bar - mainly selection
-city = st.sidebar.selectbox('Sélectionnez une ville:', city_list, index=city_list.index('Arpajon'))
-# city = 'Arpajon'
-selected_city = cities.query('name == @city')[['name', 'lat', 'lng']] 
-
-# selection data extraction 
-lat_sel, lng_sel = (cities.query('name == @city')
-                          .loc[:,['lat', 'lng']]
-                          .values[0]
-                          )
-
-yearly_df = (yearly_nc.sel(latitude=lat_sel, 
-                           longitude=lng_sel, 
-                           method='nearest')
-                       .to_dataframe()
-                       .drop(columns=['latitude', 'longitude']))
-
-# compute reference and rolling means for selected city
-yearly_rol10_df = yearly_df.rolling(window=10).mean()
-yearly_df_ref = yearly_df.loc[P['ref_period'][0]:P['ref_period'][1]].mean().T
-yearly_anomalie_df = yearly_df - yearly_df_ref
-yearly_anom_rol10_df = yearly_anomalie_df.rolling(window=10).mean()
-
-# compute prevision for 2050
-## 
-n_years = [5, 10, 20, 30]
-table_data = []
-for n in n_years:
-        warming_rate = (yearly_anom_rol10_df.loc[max_year, var] - yearly_anom_rol10_df.loc[max_year-n, var])/n
-        estimated_anomalie = warming_rate * (2050 - max_year) + yearly_anom_rol10_df.loc[max_year, var]
-        table_data.append([n, warming_rate, estimated_anomalie])
-
-prevision_2050_df = pd.DataFrame(table_data, columns=['Years', 'Warming Rate', 'prev_anomalie'])
-prevision_2050_df[f'ref_temperature'] = yearly_df_ref['2m temperature']
-prevision_2050_df[f'prev_temperature'] = prevision_2050_df[f'ref_temperature'] + prevision_2050_df['prev_anomalie']
-prevision_2050_df.set_index('Years', inplace=True)
-
-## data for the projection plot's traces 
-current_anomalie = yearly_anom_rol10_df['2m temperature'].iloc[-1]
-current_year = yearly_df.index.max()
-
-period_length_short = n_years[1] 
-period_length_long = n_years[3] 
-projections : dict[dict] = {}
-for period_length in [period_length_short, period_length_long]:
-        warming_rate = prevision_2050_df.loc[period_length, 'Warming Rate']
-        years_temp = list(range(current_year - period_length, 2051))
-        anomalies = [current_anomalie + warming_rate * (year - current_year) for year in years_temp]
-        temperatures = anomalies + yearly_df_ref['2m temperature']
-        projections[period_length]= {'year': years_temp, 
-                                     'warming_rate':warming_rate,
-                                     'anomalie': anomalies,
-                                     'temperature': temperatures,
-                                     }
  
 col1, col2 = st.columns([1.4, 1])
+tab1, tab2 = st.tabs(["📈 **Villes**", ":flag-fr: **France**"], )
 
-with col1:
+
+with tab1:
 
         #%% Anomalie time serie vizualisation
 
-        st.markdown(f'##### Anomalie de température à {city}')
+        # city selection
+        city = st.selectbox('Sélectionnez une ville:', city_list, index=city_list.index('Arpajon'))
+        # city = 'Arpajon'
+        selected_city = cities.query('name == @city')[['name', 'lat', 'lng']] 
+
+        # selection data extraction 
+        lat_sel, lng_sel = (cities.query('name == @city')
+                                .loc[:,['lat', 'lng']]
+                                .values[0]
+                                )
+
+        yearly_df = (yearly_nc.sel(latitude=lat_sel, 
+                                longitude=lng_sel, 
+                                method='nearest')
+                        .to_dataframe()
+                        .drop(columns=['latitude', 'longitude']))
+
+        # compute reference and rolling means for selected city
+        yearly_rol10_df = yearly_df.rolling(window=10).mean()
+        yearly_df_ref = yearly_df.loc[P['ref_period'][0]:P['ref_period'][1]].mean().T
+        yearly_anomalie_df = yearly_df - yearly_df_ref
+        yearly_anom_rol10_df = yearly_anomalie_df.rolling(window=10).mean()
+
+        # compute prevision for 2050
+        ## 
+        n_years = [5, 10, 20, 30]
+        table_data = []
+        for n in n_years:
+                warming_rate = (yearly_anom_rol10_df.loc[max_year, var] - yearly_anom_rol10_df.loc[max_year-n, var])/n
+                estimated_anomalie = warming_rate * (2050 - max_year) + yearly_anom_rol10_df.loc[max_year, var]
+                table_data.append([n, warming_rate, estimated_anomalie])
+
+        prevision_2050_df = pd.DataFrame(table_data, columns=['Years', 'Warming Rate', 'prev_anomalie'])
+        prevision_2050_df[f'ref_temperature'] = yearly_df_ref['2m temperature']
+        prevision_2050_df[f'prev_temperature'] = prevision_2050_df[f'ref_temperature'] + prevision_2050_df['prev_anomalie']
+        prevision_2050_df.set_index('Years', inplace=True)
+
+        ## data for the projection plot's traces 
+        current_anomalie = yearly_anom_rol10_df['2m temperature'].iloc[-1]
+        current_year = yearly_df.index.max()
+
+        period_length_short = n_years[1] 
+        period_length_long = n_years[3] 
+        projections : dict[dict] = {}
+        for period_length in [period_length_short, period_length_long]:
+                warming_rate = prevision_2050_df.loc[period_length, 'Warming Rate']
+                years_temp = list(range(current_year - period_length, 2051))
+                anomalies = [current_anomalie + warming_rate * (year - current_year) for year in years_temp]
+                temperatures = anomalies + yearly_df_ref['2m temperature']
+                projections[period_length]= {'year': years_temp, 
+                                        'warming_rate':warming_rate,
+                                        'anomalie': anomalies,
+                                        'temperature': temperatures,
+                                        }
+
+        # st.markdown(f'##### Anomalie de température à {city}')
         
         fig = go.Figure()
 
@@ -335,7 +338,13 @@ with col1:
 
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False}) 
 
-with col2:
+        st.markdown(f'''
+        **Projection 2050 pour {city}:**  
+        Avec un de "taux de rechauffement" annuel se situant entre {projections[period_length_long]['warming_rate']:+.3f} et {projections[period_length_short]['warming_rate']:+.3f} °C/an,
+        l'anomalie de temperature en 2050 devrait se situer entre **{projections[period_length_long]['anomalie'][-1]:+.1f} et {projections[period_length_short]['anomalie'][-1]:+.1f} °C**. Appliqué a la temperature de refence de {yearly_df_ref[var]:.1f} °C, cela donne pour 2050 une temperature annuelle comprise entre **{projections[period_length_long]['temperature'][-1]:.1f} et {projections[period_length_short]['temperature'][-1]:.1f} °C**.
+        ''')  
+
+with tab2:
 
         st.markdown(f'##### Anomalie de température sur les 10 dernieres années')
         st.markdown("&nbsp;")  # blanc area
@@ -409,11 +418,7 @@ with col2:
          
         st.pyplot(plt)  
 
-st.markdown(f'''
-**Projection 2050 pour {city}:**  
-Avec un de "taux de rechauffement" annuel se situant entre {projections[period_length_long]['warming_rate']:+.3f} et {projections[period_length_short]['warming_rate']:+.3f} °C/an,
- l'anomalie de temperature en 2050 devrait se situer entre **{projections[period_length_long]['anomalie'][-1]:+.1f} et {projections[period_length_short]['anomalie'][-1]:+.1f} °C**. Appliqué a la temperature de refence de {yearly_df_ref[var]:.1f} °C, cela donne pour 2050 une temperature annuelle comprise entre **{projections[period_length_long]['temperature'][-1]:.1f} et {projections[period_length_short]['temperature'][-1]:.1f} °C**.
-''')    
+  
    
 st.markdown(f"""
 **Source des données :**  
@@ -428,3 +433,16 @@ Cette approche est généralement fiable sur les données de température. Néam
 """)
 
 st.markdown('Contact: [gen1.tweezers809@passinbox.com](mailto:gen1.tweezers809@passinbox.com)')
+
+
+
+## hack to change st.tab size
+css = '''
+<style>
+    .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+    font-size:1rem;
+    }
+</style>
+'''
+
+st.markdown(css, unsafe_allow_html=True)
