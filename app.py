@@ -57,6 +57,67 @@ def load_and_process_yearly_nc(file_path, selection, var_information):
 
         return nc
 
+
+def compute_data_frames(yearly_df, ref_period, var='2m temperature',
+                        look_back_period_short=10, look_back_period_long=30):
+    """
+    Compute various data frames for global warming analysis.
+
+    Parameters:
+    - yearly_df (pandas.DataFrame): DataFrame containing yearly data.
+    - ref_period (tuple): Tuple containing the start and end years of the reference period.
+    - var (str, optional): Variable to analyze. Defaults to '2m temperature'.
+    - look_back_period_short (int, optional): Look back period for short-term analysis. Defaults to 10.
+    - look_back_period_long (int, optional): Look back period for long-term analysis. Defaults to 30.
+
+    Returns:
+    - list: List containing the following data frames:
+        - yearly_df_ref: DataFrame containing the mean values of the reference period.
+        - yearly_anomalie_df: DataFrame containing the anomalies of the yearly data.
+        - projections: Dictionary containing projections for different look back periods.
+        - yearly_anom_rol10_df: DataFrame containing the rolling mean of the yearly anomalies.
+    """
+    
+    yearly_df_ref = yearly_df.loc[ref_period[0]:ref_period[1]].mean().T
+    yearly_anomalie_df = yearly_df - yearly_df_ref
+    yearly_anom_rol10_df = yearly_anomalie_df.rolling(window=10).mean()
+
+    # compute prevision for 2050
+    ## 
+    max_year = yearly_df.index.max()
+    table_data = []
+    for n in [look_back_period_short, look_back_period_long]:
+            warming_rate = (yearly_anom_rol10_df.loc[max_year, var] - yearly_anom_rol10_df.loc[max_year-n, var])/n
+            estimated_anomalie = warming_rate * (2050 - max_year) + yearly_anom_rol10_df.loc[max_year, var]
+            table_data.append([n, warming_rate, estimated_anomalie])
+
+    prevision_2050_df = pd.DataFrame(table_data, columns=['Years', 'Warming Rate', 'prev_anomalie'])
+    prevision_2050_df[f'ref_temperature'] = yearly_df_ref['2m temperature']
+    prevision_2050_df[f'prev_temperature'] = prevision_2050_df[f'ref_temperature'] + prevision_2050_df['prev_anomalie']
+    prevision_2050_df.set_index('Years', inplace=True)
+
+    ## data for the projection plot's traces 
+    current_anomalie = yearly_anom_rol10_df['2m temperature'].iloc[-1]
+    current_year = yearly_df.index.max()
+
+    projections : dict[dict] = {}
+    for look_back_period in [look_back_period_short, look_back_period_long]:
+            warming_rate = prevision_2050_df.loc[look_back_period, 'Warming Rate']
+            years_temp = list(range(current_year - look_back_period, 2051))
+            anomalies = [current_anomalie + warming_rate * (year - current_year) for year in years_temp]
+            temperatures = anomalies + yearly_df_ref['2m temperature']
+            projections[look_back_period]= {'year': years_temp, 
+                                    'warming_rate':warming_rate,
+                                    'anomalie': anomalies,
+                                    'temperature': temperatures,
+                                    }
+
+
+    return [yearly_df_ref, 
+            yearly_anomalie_df,
+            projections, 
+            yearly_anom_rol10_df,]
+
 #%% Set parameters
 # st.set_page_config(layout="wide")
 
@@ -105,6 +166,7 @@ city_list = cities['name'].tolist()
 
 # set default values and period
 var = '2m temperature'
+
 min_year = yearly_nc.time.min().item()
 max_year = yearly_nc.time.max().item()
 years = range(min_year, max_year+1)
@@ -172,51 +234,55 @@ with tab1:
                                 )
 
         yearly_df = (yearly_nc.sel(latitude=lat_sel, 
-                                longitude=lng_sel, 
-                                method='nearest')
+                                   longitude=lng_sel, 
+                                   method='nearest')
                         .to_dataframe()
                         .drop(columns=['latitude', 'longitude']))
 
-        # compute reference and rolling means for selected city
-        yearly_rol10_df = yearly_df.rolling(window=10).mean()
-        yearly_df_ref = yearly_df.loc[P['ref_period'][0]:P['ref_period'][1]].mean().T
-        yearly_anomalie_df = yearly_df - yearly_df_ref
-        yearly_anom_rol10_df = yearly_anomalie_df.rolling(window=10).mean()
+        # # compute reference and rolling means for selected city
+        # yearly_rol10_df = yearly_df.rolling(window=10).mean()
+        # yearly_df_ref = yearly_df.loc[P['ref_period'][0]:P['ref_period'][1]].mean().T
+        # yearly_anomalie_df = yearly_df - yearly_df_ref
+        # yearly_anom_rol10_df = yearly_anomalie_df.rolling(window=10).mean()
 
-        # compute prevision for 2050
-        ## 
-        n_years = [5, 10, 20, 30]
-        table_data = []
-        for n in n_years:
-                warming_rate = (yearly_anom_rol10_df.loc[max_year, var] - yearly_anom_rol10_df.loc[max_year-n, var])/n
-                estimated_anomalie = warming_rate * (2050 - max_year) + yearly_anom_rol10_df.loc[max_year, var]
-                table_data.append([n, warming_rate, estimated_anomalie])
+        # # compute prevision for 2050
+        # ## 
 
-        prevision_2050_df = pd.DataFrame(table_data, columns=['Years', 'Warming Rate', 'prev_anomalie'])
-        prevision_2050_df[f'ref_temperature'] = yearly_df_ref['2m temperature']
-        prevision_2050_df[f'prev_temperature'] = prevision_2050_df[f'ref_temperature'] + prevision_2050_df['prev_anomalie']
-        prevision_2050_df.set_index('Years', inplace=True)
+        # n_years = [5, 10, 20, 30]
+        # table_data = []
+        # for n in n_years:
+        #         warming_rate = (yearly_anom_rol10_df.loc[max_year, var] - yearly_anom_rol10_df.loc[max_year-n, var])/n
+        #         estimated_anomalie = warming_rate * (2050 - max_year) + yearly_anom_rol10_df.loc[max_year, var]
+        #         table_data.append([n, warming_rate, estimated_anomalie])
 
-        ## data for the projection plot's traces 
-        current_anomalie = yearly_anom_rol10_df['2m temperature'].iloc[-1]
-        current_year = yearly_df.index.max()
+        # prevision_2050_df = pd.DataFrame(table_data, columns=['Years', 'Warming Rate', 'prev_anomalie'])
+        # prevision_2050_df[f'ref_temperature'] = yearly_df_ref['2m temperature']
+        # prevision_2050_df[f'prev_temperature'] = prevision_2050_df[f'ref_temperature'] + prevision_2050_df['prev_anomalie']
+        # prevision_2050_df.set_index('Years', inplace=True)
 
-        period_length_short = n_years[1] 
-        period_length_long = n_years[3] 
-        projections : dict[dict] = {}
-        for period_length in [period_length_short, period_length_long]:
-                warming_rate = prevision_2050_df.loc[period_length, 'Warming Rate']
-                years_temp = list(range(current_year - period_length, 2051))
-                anomalies = [current_anomalie + warming_rate * (year - current_year) for year in years_temp]
-                temperatures = anomalies + yearly_df_ref['2m temperature']
-                projections[period_length]= {'year': years_temp, 
-                                        'warming_rate':warming_rate,
-                                        'anomalie': anomalies,
-                                        'temperature': temperatures,
-                                        }
+        # ## data for the projection plot's traces 
+        # current_anomalie = yearly_anom_rol10_df['2m temperature'].iloc[-1]
+        # current_year = yearly_df.index.max()
 
-        # st.markdown(f'##### Anomalie de température à {city}')
+        # period_length_short = n_years[1] 
+        # period_length_long = n_years[3] 
+        # projections : dict[dict] = {}
+        # for period_length in [period_length_short, period_length_long]:
+        #         warming_rate = prevision_2050_df.loc[period_length, 'Warming Rate']
+        #         years_temp = list(range(current_year - period_length, 2051))
+        #         anomalies = [current_anomalie + warming_rate * (year - current_year) for year in years_temp]
+        #         temperatures = anomalies + yearly_df_ref['2m temperature']
+        #         projections[period_length]= {'year': years_temp, 
+        #                                 'warming_rate':warming_rate,
+        #                                 'anomalie': anomalies,
+        #                                 'temperature': temperatures,
+        #                                 }
+
+        # # st.markdown(f'##### Anomalie de température à {city}')
         
+        yearly_df_ref, yearly_anomalie_df, projections, yearly_anom_rol10_df = compute_data_frames(yearly_df, ref_period=P['ref_period'])
+
+
         fig = go.Figure()
 
         # main yearly bar anomalie
@@ -406,7 +472,7 @@ with tab2:
 
         ## SHORT PERIOD PROJECTION
         fig_fr.add_trace(go.Scatter(x=projections_fr[period_length_short]['year'], 
-                                        y=projections_fr[period_length_short]['anomalie'], 
+                                    y=projections_fr[period_length_short]['anomalie'], 
                                         mode='lines',
                                         line=dict(color='grey', 
                                                 width=2, 
@@ -418,7 +484,7 @@ with tab2:
 
         # last point
         last_point = [projections_fr[period_length_short]['year'][-1], 
-                        projections_fr[period_length_short]['anomalie'][-1]]
+                      projections_fr[period_length_short]['anomalie'][-1]]
         fig_fr.add_trace(go.Scatter(x=[last_point[0]],  
                                         y=[last_point[1]],
                                         mode='markers', 
@@ -551,7 +617,29 @@ with tab2:
 
 #       %% anomalie map
 
-        map_sel = (yearly_anom_nc[var].sel(time=slice(max_year-9, max_year))
+        # Add a streamlit selector for years
+        selected_years = st.multiselect('Selectionnez des années', 
+                                        yearly_anom_nc['time'].values, 
+                                        default=[2014, 
+                                                 2015, 
+                                                 2016, 
+                                                 2017, 
+                                                 2018, 
+                                                 2019, 
+                                                 2020, 
+                                                 2021, 
+                                                 2022, 
+                                                 2023,]
+                                                 )
+
+        # Filter the data for the selected year
+#        map_sel = (yearly_anom_nc[var].sel(time=selected_year)
+#                                      .where(mask_france)
+#                                      .mean(dim='time'))
+
+# Rest of the code...
+
+        map_sel = (yearly_anom_nc[var].sel(time=selected_years)
                                       .where(mask_france)
                                       .mean(dim='time'))
 
@@ -564,8 +652,8 @@ with tab2:
         ax.axis('off')
 
         # set the colormap limits based on the data values
-        v_min = map_sel.min() + 0.15
-        v_max = map_sel.max() - 0.15
+        v_min = 3.25  # map_sel.min() + 0.15
+        v_max = 0     # map_sel.max() - 0.15
         c_map = 'gist_heat' # 'RdGy_r' #'PuOr_r' #'hot' #RdPu'
 
         # map
