@@ -120,7 +120,7 @@ def compute_data_frames(yearly_df, ref_period, var='2m temperature',
             yearly_anom_rol10_df,]
 
 
-def create_time_serie_fig(yearly_anomalie_df, yearly_anom_rol10_df, var, projections):
+def create_time_serie_fig(yearly_anomalie_df, yearly_anom_rol10_df, var, projections, title='Répartition temporelle de l anomalie de température'):
         """
         Creates a time series figure with various traces and annotations.
 
@@ -283,7 +283,7 @@ def create_time_serie_fig(yearly_anomalie_df, yearly_anom_rol10_df, var, project
                                 #margin=dict(t=100),
                                 xaxis_title='',
                                 legend=dict(x=0, y=1,),  # moves the legend to the top left corner
-                                title="Répartition temporelle de l'anomalie de température",  # Add the title to the graph
+                                title=title,  # Add the title to the graph
                         )
 
         fig.update_yaxes(range=[-1.5, 6],
@@ -337,7 +337,7 @@ cities = load_cities(P['cities_list_path'])
 yearly_anom_nc = calculate_yearly_anomalie_nc(yearly_nc, P['ref_period'])
 var_names = list(yearly_nc.data_vars.keys())
 major_cities = cities[cities['capital'].isin(['primary', 'admin'])]
-city_list = cities['name'].tolist()
+city_list = [' France'] + cities['name'].tolist()
 
 # set default values and period
 var = '2m temperature'
@@ -347,7 +347,7 @@ max_year = yearly_nc.time.max().item()
 years = range(min_year, max_year+1)
 
 # France df
-fr_avg_df = (yearly_nc['2m temperature'].mean(dim=['latitude', 'longitude'])
+fr_avg_df = (yearly_nc[var].mean(dim=['latitude', 'longitude'])
                                         .to_dataframe())
 fr_df_ref, fr_anom_df, projections_fr, fr_anom_rol10_df = compute_data_frames(fr_avg_df, ref_period=P['ref_period'])
 
@@ -356,152 +356,116 @@ fr_df_ref, fr_anom_df, projections_fr, fr_anom_rol10_df = compute_data_frames(fr
 st.markdown('<h2 style="font-size: 2.2rem;">Effet du réchauffement climatique en France</h2>', unsafe_allow_html=True)
 st.markdown('Variations temporelles et spatiales des anomalies de température en France.')
 
-tab1, tab2 = st.tabs(["📈 **Villes**", ":flag-fr: **France**"], )
+# Anomalie time serie vizualisation
 
-with tab1:
+# city selection
+city = st.selectbox('Sélectionnez une ville:', city_list, index=city_list.index(' France'))
+# city = 'Arpajon'
+selected_city = cities.query('name == @city')[['name', 'lat', 'lng']] 
 
-        #%% Anomalie time serie vizualisation
-
-        # city selection
-        city = st.selectbox('Sélectionnez une ville:', city_list, index=city_list.index('Arpajon'))
-        # city = 'Arpajon'
-        selected_city = cities.query('name == @city')[['name', 'lat', 'lng']] 
-
+if city == ' France':
+        yearly_df = fr_avg_df
+else:
         # selection data extraction 
         lat_sel, lng_sel = (cities.query('name == @city')
-                                .loc[:,['lat', 'lng']]
-                                .values[0]
-                                )
+                                        .loc[:,['lat', 'lng']]
+                                        .values[0]
+                                        )
 
         yearly_df = (yearly_nc.sel(latitude=lat_sel, 
-                                   longitude=lng_sel, 
-                                   method='nearest')
+                                longitude=lng_sel, 
+                                method='nearest')
                         .to_dataframe()
-                        .drop(columns=['latitude', 'longitude']))
-     
-        yearly_df_ref, yearly_anomalie_df, projections, yearly_anom_rol10_df = compute_data_frames(yearly_df, ref_period=P['ref_period'])
+                        .drop(columns=['latitude', 'longitude'])
+                        )
 
-        fig = create_time_serie_fig(yearly_anomalie_df, yearly_anom_rol10_df, var, projections)
+yearly_df_ref, yearly_anomalie_df, projections, yearly_anom_rol10_df = compute_data_frames(yearly_df, ref_period=P['ref_period'])
 
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False}) 
+fig = create_time_serie_fig(yearly_anomalie_df, yearly_anom_rol10_df, var, projections, title=f'Anomalie de température: {city}')
 
-        st.markdown(f'''
-        **Projection 2050 pour {city}:**  
-        Avec un de "taux de rechauffement" annuel se situant entre {projections[1]['warming_rate']:+.3f} et {projections[0]['warming_rate']:+.3f} °C/an,
-        l'anomalie de temperature en 2050 devrait se situer entre **{projections[1]['anomalie'][-1]:+.1f} et {projections[0]['anomalie'][-1]:+.1f} °C**. Appliqué a la temperature de refence de {yearly_df_ref[var]:.1f} °C, cela donne pour 2050 une temperature annuelle comprise entre **{projections[1]['temperature'][-1]:.1f} et {projections[0]['temperature'][-1]:.1f} °C**.
-        ''')  
+st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False}) 
 
-with tab2:
+st.markdown(f'''
+**Projection 2050 pour {city}:**  
+Avec un de "taux de rechauffement" annuel se situant entre {projections[1]['warming_rate']:+.3f} et {projections[0]['warming_rate']:+.3f} °C/an,
+l'anomalie de temperature en 2050 devrait se situer entre **{projections[1]['anomalie'][-1]:+.1f} et {projections[0]['anomalie'][-1]:+.1f} °C**. Appliqué a la temperature de refence de {yearly_df_ref[var]:.1f} °C, cela donne pour 2050 une temperature annuelle comprise entre **{projections[1]['temperature'][-1]:.1f} et {projections[0]['temperature'][-1]:.1f} °C**.
+''')  
 
- #       st.markdown(f'##### Répartition spacial de l anomalie de température')
- #       st.markdown("&nbsp;")  # blanc area
+st.markdown("&nbsp;")  # blanc area
 
 #%% anomalie map
 
-        # Add a streamlit selector for years
-        selected_years = st.multiselect('Selectionnez des années', 
-                                        yearly_anom_nc['time'].values, 
-                                        default=[2014, 
-                                                 2015, 
-                                                 2016, 
-                                                 2017, 
-                                                 2018, 
-                                                 2019, 
-                                                 2020, 
-                                                 2021, 
-                                                 2022, 
-                                                 2023,]
-                                                 )
+st.markdown(f'##### Répartition spacial de l anomalie de température')
+selected_years = st.multiselect('Selectionnez des années', 
+                                yearly_anom_nc['time'].values, 
+                                default=[2021, 2022, 2023,]
+                                )
 
-        # Filter the data for the selected year
-#        map_sel = (yearly_anom_nc[var].sel(time=selected_year)
-#                                      .where(mask_france)
-#                                      .mean(dim='time'))
+map_sel = (yearly_anom_nc[var].sel(time=selected_years)
+                              .where(mask_france)
+                              .mean(dim='time'))
 
-# Rest of the code...
+fig = plt.figure(figsize=(10, 6))
+ax = plt.axes(projection=ccrs.PlateCarree())
 
-        map_sel = (yearly_anom_nc[var].sel(time=selected_years)
-                                      .where(mask_france)
-                                      .mean(dim='time'))
+fig.patch.set_facecolor('none') # Set the background color of the figure and axes to be transparent
+ax.set_facecolor('none')
+ax.axis('off')
 
-        fig = plt.figure(figsize=(10, 6))
-        ax = plt.axes(projection=ccrs.PlateCarree())
+# set the colormap limits based on the data values
+v_min = 3.25  # map_sel.min() + 0.15
+v_max = 0     # map_sel.max() - 0.15
+c_map = 'gist_heat' # 'RdGy_r' #'PuOr_r' #'hot' #RdPu'
 
-        # Set the background color of the figure and axes to be transparent
-        fig.patch.set_facecolor('none')
-        ax.set_facecolor('none')
-        ax.axis('off')
+# map
+map_sel.plot(ax=ax, 
+                transform=ccrs.PlateCarree(), 
+                x='longitude', 
+                y='latitude',
+                cmap=c_map,
+                cbar_kwargs={'shrink': 0.5, 
+                                'label' : 'Anomalie de température [°C]'},
+                vmin= v_min,
+                vmax= v_max,
+                )
 
-        # set the colormap limits based on the data values
-        v_min = 3.25  # map_sel.min() + 0.15
-        v_max = 0     # map_sel.max() - 0.15
-        c_map = 'gist_heat' # 'RdGy_r' #'PuOr_r' #'hot' #RdPu'
+ax.coastlines()
 
-        # map
-        map_sel.plot(ax=ax, 
-                        transform=ccrs.PlateCarree(), 
-                        x='longitude', 
-                        y='latitude',
-                        cmap=c_map,
-                        cbar_kwargs={'shrink': 0.5, 
-                                     'label' : 'Anomalie de température [°C]'},
-                        vmin= v_min,
-                        vmax= v_max,
-                        )
+# Plot cities location
+ax.scatter('lng',
+        'lat',
+        data=major_cities, 
+        marker='+',
+        color='green',
+        s=8,
+        label='_nolegend_',  # Exclude this plot from the legend
+        transform=ccrs.PlateCarree(),
+        )
 
-        ax.coastlines()
-
-        # Plot cities location
-        ax.scatter('lng',
-                'lat',
-                data=major_cities, 
-                marker='+',
+# add citie names
+for i, row in major_cities.iterrows():
+        plt.text(row['lng']+0.1, row['lat']+0.1, 
+                s=row['name'], 
+                transform=ccrs.PlateCarree(), 
                 color='green',
-                s=8,
-                label='_nolegend_',  # This will exclude this plot from the legend
-                transform=ccrs.PlateCarree(),
+                size=9,
                 )
 
-        # add citie names
-        for i, row in major_cities.iterrows():
-                plt.text(row['lng']+0.1, row['lat']+0.1, 
-                        s=row['name'], 
-                        transform=ccrs.PlateCarree(), 
-                        color='green',
-                        size=9,
-                        # label='_nolegend_',  # This will exclude this plot from the legend
-                        )
+ax.plot('lng', 
+        'lat', 
+        marker='X', 
+        data=selected_city,
+        color='darkgrey', 
+        markersize=13, 
+        markeredgewidth=1.5,
+        markeredgecolor='black',
+        label='_nolegend_',  # Exclude this plot from the legend
+        transform=ccrs.PlateCarree(),
+        )
 
-        ax.plot('lng', 
-                'lat', 
-                marker='X', 
-                data=selected_city,
-                color='darkgrey', 
-                markersize=13, 
-                markeredgewidth=1.5,
-                markeredgecolor='black',
-                label='_nolegend_',  # This will exclude this plot from the legend
-                transform=ccrs.PlateCarree(),
-                )
+ax.legend(fontsize='large', frameon=False)
 
-        ax.legend(fontsize='large', frameon=False)
-        ax.set_title("Répartition spaciale de l'anomalie de température")  # Add title to the figure
-        
-        st.pyplot(plt)  
-
-#%% plot temp
-
-        fig_fr = create_time_serie_fig(fr_anom_df, fr_anom_rol10_df, var, projections_fr)
-
-        st.plotly_chart(fig_fr, use_container_width=True, config={'displayModeBar': False}) 
-
-        st.markdown(f'''
-        **Projection 2050 pour France:**  
-        Avec un de "taux de rechauffement" annuel se situant entre {projections_fr[1]['warming_rate']:+.3f} et {projections_fr[0]['warming_rate']:+.3f} °C/an,
-        l'anomalie de temperature en 2050 devrait se situer entre **{projections_fr[1]['anomalie'][-1]:+.1f} et {projections_fr[0]['anomalie'][-1]:+.1f} °C**. Appliqué a la temperature de refence de {fr_df_ref[var]:.1f} °C, cela donne pour 2050 une temperature annuelle comprise entre **{projections_fr[1]['temperature'][-1]:.1f} et {projections_fr[0]['temperature'][-1]:.1f} °C**.
-        ''')
-
-  
+st.pyplot(plt)  
 
 st.markdown(f"""
 **Source des données :**  
@@ -516,7 +480,6 @@ Cette approche est généralement fiable sur les données de température. Néam
 """)
 
 st.markdown('Contact: [gen1.tweezers809@passinbox.com](mailto:gen1.tweezers809@passinbox.com)')
-
 
 
 ## hack to change st.tab size
