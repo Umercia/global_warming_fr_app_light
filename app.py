@@ -93,7 +93,9 @@ fr_avg_df = (yearly_nc[var].mean(dim=['latitude', 'longitude'])
 
 #%% Streamlit
 st.markdown('<h2 style="font-size: 2.2rem;">Effet du réchauffement climatique en France</h2>', unsafe_allow_html=True)
-st.markdown("Variations temporelles et spatiales de l'anomalie de température (écart à la normalité).")
+st.markdown("""Variations temporelles et spatiales de l'anomalie de température (écart à la normalité).  
+            Pour une expérience optimale, il est recommandé de consulter cette page sur un écran d'ordinateur plutôt que sur un smartphone.
+            """)
 st.markdown("&nbsp;") 
 
 #%% Anomalie time serie vizualisation
