@@ -161,7 +161,8 @@ Les données sont fournies par le Centre européen de prévisions météorologiq
 - La période de réference utilisé pour le calcul d'anomalie va de 1950 à 1979 (30 ans).  
 - Le calcul des moyennes haute et basse du "taux de rechauffement" se fait respectivement sur la base des {projections[0]['period']} et {projections[1]['period']} dernieres années.
 - Les données extraitent pour les villes sont issues du point de données le plus proche (distance < 4.5 km).
-Cette approche est généralement fiable sur les données de température. Néamoins, cette fiablilité baisse fortement dans les zones trés montagneuses.    
+Cette approche est généralement fiable sur les données de température. Néamoins, cette fiablilité baisse fortement dans les zones trés montagneuses.   
+- Lien vers [l'evolution de la temperature de surface mondiale](https://climatereanalyzer.org/clim/t2_daily/?dm_id=world). 
 """)
 
 st.markdown('Contact: [gen1.tweezers809@passinbox.com](mailto:gen1.tweezers809@passinbox.com)')
