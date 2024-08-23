@@ -162,7 +162,9 @@ Les données sont fournies par le Centre européen de prévisions météorologiq
 - Le calcul des moyennes haute et basse du "taux de rechauffement" se fait respectivement sur la base des {projections[0]['period']} et {projections[1]['period']} dernieres années.
 - Les données extraitent pour les villes sont issues du point de données le plus proche (distance < 4.5 km).
 Cette approche est généralement fiable sur les données de température. Néamoins, cette fiablilité baisse fortement dans les zones trés montagneuses.   
-- Lien vers [l'evolution de la temperature de surface mondiale](https://climatereanalyzer.org/clim/t2_daily/?dm_id=world). 
+- Liens:  
+        - Version plus detaillée de cette page : [ici](https://global-warming-france.streamlit.app/)  
+        - Climate reanalyzer: [évolution de la temperature de surface mondiale](https://climatereanalyzer.org/clim/t2_daily/?dm_id=world).  
 """)
 
 st.markdown('Contact: [gen1.tweezers809@passinbox.com](mailto:gen1.tweezers809@passinbox.com)')
