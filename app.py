@@ -163,7 +163,6 @@ Les données sont fournies par le Centre européen de prévisions météorologiq
 - Les données extraitent pour les villes sont issues du point de données le plus proche (distance < 4.5 km).
 Cette approche est généralement fiable sur les données de température. Néamoins, cette fiablilité baisse fortement dans les zones trés montagneuses.   
 - Liens:  
-        - Version plus detaillée de cette page : [ici](https://global-warming-france.streamlit.app/)  
         - Climate reanalyzer: [évolution de la temperature de surface mondiale](https://climatereanalyzer.org/clim/t2_daily/?dm_id=world).  
 """)
 
