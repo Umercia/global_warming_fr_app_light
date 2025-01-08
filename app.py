@@ -142,7 +142,7 @@ st.markdown("&nbsp;")  # blanc area
 st.markdown(f"##### Répartition spacial de l'anomalie de température")
 selected_years = st.multiselect('', 
                                 yearly_anom_nc['time'].values, 
-                                default=[2023,]
+                                default=[2024,]
                                 )
 
 map_sel = (yearly_anom_nc[var].sel(time=selected_years)
